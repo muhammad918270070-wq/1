@@ -1,163 +1,146 @@
-import streamlit as st  # импорт библиотеки Streamlit для создания веб-приложения
-import pandas as pd  # импорт pandas для работы с таблицами
-import numpy as np  # импорт numpy для численных операций
-import matplotlib.pyplot as plt  # импорт matplotlib для построения графиков
-from sklearn.datasets import fetch_california_housing  # загрузка датасета недвижимости Калифорнии
-from sklearn.ensemble import RandomForestRegressor  
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.datasets import fetch_california_housing
+from sklearn.ensemble import RandomForestRegressor
 
-# ---------------------------
-# PAGE CONFIG
-# ---------------------------
-st.set_page_config(page_title="🏠 House Price AI", layout="wide")  # настройка страницы приложения
+# --- PAGE CONFIG ---
+# Настройка заголовка вкладки браузера и широкого формата страницы
+st.set_page_config(page_title="🏠 House Price AI", layout="wide")
 
-st.title("🏠 AI House Price Predictor")  # заголовок приложения
-st.markdown("### Smart real estate valuation powered by Machine Learning")  # подзаголовок
+# Заголовки на главной странице
+st.title("🏠 AI House Price Predictor")
+st.markdown("### Smart real estate valuation powered by Machine Learning")
 
-# ---------------------------
-# LOAD DATA
-# ---------------------------
-@st.cache_data  # кэширование данных для ускорения
+# --- LOAD DATA ---
+# Кэшируем данные, чтобы они не перегружались при каждом взаимодействии с интерфейсом
+@st.cache_data
 def load_data():
-    housing = fetch_california_housing()  # загрузка датасета
-    X = pd.DataFrame(housing.data, columns=housing.feature_names)  # признаки в DataFrame
-    y = pd.Series(housing.target, name="PRICE")  # целевая переменная (цена)
-    return X, y  # возврат данных
+    housing = fetch_california_housing()
+    # Создаем DataFrame с признаками (X) и целевую переменную с ценой (y)
+    X = pd.DataFrame(housing.data, columns=housing.feature_names)
+    y = pd.Series(housing.target, name="PRICE")
+    return X, y
 
-X, y = load_data()  # получение данных
+X, y = load_data()
 
-# ---------------------------
-# MODEL
-# ---------------------------
-@st.cache_resource  # кэширование модели
+# --- MODEL ---
+# Кэшируем модель, чтобы не переобучать её при каждом изменении слайдера
+@st.cache_resource
 def train_model():
-    model = RandomForestRegressor(n_estimators=50)  # создание модели с 150 деревьями
-    model.fit(X, y)  # обучение модели
-    return model  # возврат модели
+    # Создаем модель случайного леса со 150 деревьями
+    model = RandomForestRegressor(n_estimators=150, random_state=42)
+    model.fit(X, y) # Обучаем на загруженных данных
+    return model
 
-model = train_model()  # обучение модели
+model = train_model()
 
-# ---------------------------
-# SIDEBAR
-# ---------------------------
-st.sidebar.title("⚙️ Customize House")  # заголовок боковой панели
+# --- SIDEBAR ---
+# Заголовок боковой панели
+st.sidebar.title("⚙️ Customize House")
 
+# Функция для создания слайдеров на основе признаков из датасета
 def user_input():
-    data = {}  # словарь для хранения пользовательских данных
-    for col in X.columns:  # цикл по всем признакам
-        data[col] = st.sidebar.slider(  # создание слайдера для каждого признака
-            col,  # название признака
-            float(X[col].min()),  # минимальное значение
-            float(X[col].max()),  # максимальное значение
-            float(X[col].mean())  # значение по умолчанию
+    data = {}
+    for col in X.columns:
+        # Создаем слайдер для каждого признака с мин, макс и средним значением
+        data[col] = st.sidebar.slider(
+            col,
+            float(X[col].min()),
+            float(X[col].max()),
+            float(X[col].mean())
         )
-    return pd.DataFrame(data, index=[0])  # преобразование в DataFrame
+    # Возвращаем введенные данные в виде одной строки таблицы (DataFrame)
+    return pd.DataFrame(data, index=[0])
 
-df = user_input()  # получение пользовательского ввода
+df = user_input() # Получаем данные от пользователя
 
-prediction = model.predict(df)[0]  # предсказание модели
-price = prediction * 100000  # масштабирование цены
+# Расчет предсказания
+prediction = model.predict(df)[0]
+# Масштабируем цену (в датасете значения в сотнях тысяч долларов)
+price = prediction * 100000 
 
-# ---------------------------
-# TOP METRICS
-# ---------------------------
-col1, col2, col3 = st.columns(3)  # создание 3 колонок
+# --- TOP METRICS ---
+# Создаем три колонки для вывода ключевых показателей
+col1, col2, col3 = st.columns(3)
 
-col1.metric("💰 Predicted Price", f"${price:,.0f}")  # отображение предсказанной цены
-col2.metric("📊 Dataset Avg", f"${y.mean()*100000:,.0f}")  # средняя цена по датасету
-col3.metric("📈 Difference", f"${price - y.mean()*100000:,.0f}")  # разница
+# Выводим предсказанную цену, среднюю по датасету и разницу между ними
+col1.metric("💰 Predicted Price", f"${price:,.0f}")
+col2.metric("📊 Dataset Avg", f"${y.mean()*100000:,.0f}")
+col3.metric("📝 Difference", f"${(price - y.mean()*100000):,.0f}")
 
-st.divider()  # разделительная линия
+st.divider() # Разделительная линия
 
-# ---------------------------
-# TABS
-# ---------------------------
-tab1, tab2, tab3, tab4 = st.tabs(["📥 Input", "📊 Analytics", "🗺️ Map", "🧠 Model"])  # создание вкладок
+# --- TABS ---
+# Создаем вкладки с названиями в точности как на твоем макете
+tab1, tab2, tab3, tab4 = st.tabs(["📥 Input", "📊 Analytics", "🗺️ Map", "🧠 Model"])
 
-# ---------------------------
-# TAB 1 INPUT
-# ---------------------------
 with tab1:
-    st.subheader("Your House Parameters")  # заголовок
-    st.dataframe(df)  # отображение введённых данных
+    st.subheader("Your House Parameters")
+    # Показываем таблицу с данными, которые пользователь выбрал слайдерами
+    st.dataframe(df)
 
-# ---------------------------
-# TAB 2 ANALYTICS
-# ---------------------------
 with tab2:
-    colA, colB = st.columns(2)  # две колонки
-
+    colA, colB = st.columns(2)
+    
     with colA:
-        st.subheader("Price Distribution")  # заголовок графика
-        fig, ax = plt.subplots()  # создание фигуры
-        ax.hist(y, bins=30)  # гистограмма цен
-        ax.axvline(prediction, linestyle="--")  # линия предсказания
-        st.pyplot(fig)  # вывод графика
+        st.subheader("Price Distribution")
+        # Гистограмма распределения цен в датасете
+        fig, ax = plt.subplots()
+        ax.hist(y, bins=30)
+        # Добавляем вертикальную линию нашего предсказания (в том же масштабе, что и y)
+        ax.axvline(prediction, color='red', linestyle='--')
+        st.pyplot(fig)
 
     with colB:
-        st.subheader("Feature Importance")  # заголовок
-
-        importance = pd.DataFrame({  # создание DataFrame важности признаков
+        st.subheader("Feature Importance")
+        # Создаем таблицу важности признаков для графика
+        importance = pd.DataFrame({
             "Feature": X.columns,
             "Importance": model.feature_importances_
-        }).sort_values(by="Importance", ascending=True)  # сортировка
+        }).sort_values(by="Importance", ascending=True)
+        
+        # Строим горизонтальный столбчатый график
+        fig2, ax2 = plt.subplots()
+        ax2.barh(importance["Feature"], importance["Importance"])
+        st.pyplot(fig2)
 
-        fig2, ax2 = plt.subplots()  # создание фигуры
-        ax2.barh(importance["Feature"], importance["Importance"])  # горизонтальный барчарт
-        st.pyplot(fig2)  # вывод графика
-
-# ---------------------------
-# TAB 3 MAP
-# ---------------------------
 with tab3:
-    st.subheader("Geographic Visualization")  # заголовок
-
-    map_data = X.copy()  # копия данных
-    map_data["price"] = y  # добавление цены
-
-    st.map(map_data.rename(columns={  # отображение карты
-        "Latitude": "lat",  # переименование широты
-        "Longitude": "lon"  # переименование долготы
-    }))
-
-# ---------------------------
-# TAB 4 MODEL INFO
-# ---------------------------
+    st.subheader("Geographic Visualization")
+    # Готовим данные для карты, переименовывая широту и долготу под стандарт st.map
+    map_data = X.copy()
+    map_data['price'] = y
+    st.map(map_data.rename(columns={"Latitude": "lat", "Longitude": "lon"}))
 with tab4:
-    st.subheader("Model Explanation")  # заголовок
-
-    st.write("""  # текстовое описание модели
-    This model uses **Random Forest Regression**.
-
-    ✔ Combines multiple decision trees  
-    ✔ Captures complex relationships  
-    ✔ Works well for real estate data  
-
-    ### Key Factors:
-    - Median Income (most important)
-    - Location (Latitude/Longitude)
-    - Average Rooms
+    st.subheader("Model Explanation")
+    # Текстовое описание используемой модели
+    st.write("""
+    This model uses Random Forest Regression.
+    
+    ✓ Combines multiple decision trees
+    ✓ Captures complex relationships
+    ✓ Works well for real estate data
     """)
+    
+    st.subheader("Correlation Matrix")
+    # Вычисляем корреляцию признаков и строим матрицу
+    corr = X.corr()
+    fig3, ax3 = plt.subplots()
+    cax = ax3.matshow(corr)
+    # Настраиваем оси и цветовую шкалу
+    plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)
+    plt.yticks(range(len(corr.columns)), corr.columns)
+    fig3.colorbar(cax)
+    st.pyplot(fig3)
 
-    st.subheader("Correlation Matrix")  # заголовок корреляции
-
-    corr = X.corr()  # вычисление корреляционной матрицы
-    fig3, ax3 = plt.subplots()  # создание фигуры
-    cax = ax3.matshow(corr)  # визуализация матрицы
-    plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)  # подписи оси X
-    plt.yticks(range(len(corr.columns)), corr.columns)  # подписи оси Y
-    fig3.colorbar(cax)  # цветовая шкала
-
-    st.pyplot(fig3)  # вывод графика
-
-# ---------------------------
-# BONUS: COMPARE WITH DATASET
-# ---------------------------
-st.divider()  # разделитель
-st.subheader("📊 Compare Your House to Dataset")  # заголовок
-
-comparison = pd.DataFrame({  # создание DataFrame сравнения
-    "Your House": df.iloc[0],  # данные пользователя
-    "Average": X.mean()  # средние значения
+# --- BONUS ---
+st.divider()
+# Сравнение параметров пользователя со средними значениями по датасету
+st.subheader("📊 Compare Your House to Dataset")
+comparison = pd.DataFrame({
+    "Your House": df.iloc[0],
+    "Average": X.mean()
 })
-
-st.bar_chart(comparison)  # отображение столбчатой диаграммы
+st.bar_chart(comparison)
