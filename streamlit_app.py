@@ -1,6 +1,7 @@
 import streamlit as st
 from sklearn.datasets import fetch_california_housing
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 
 st.title('My first project')
 st.markdown("### Smart real estate valuation powered by Machine Learning")
@@ -13,3 +14,14 @@ def load_data():
     return X, y
 
 X, y = load_data()
+
+# ---------------------------
+# MODEL
+# ---------------------------
+@st.cache_resource
+def train_model():
+    model = RandomForestRegressor(n_estimators=150)
+    model.fit(X, y)
+    return model
+
+model = train_model()
